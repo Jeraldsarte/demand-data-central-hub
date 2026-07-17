@@ -40,7 +40,7 @@ export async function getTasks(): Promise<TaskRow[]> {
 
     const rows = response.data.values || [];
     return rows.map((row, index) => ({
-      rowIndex: index + 2,
+      rowIndex: index,
       dateRequested: typeof row[0] === 'string' ? row[0] : '',
       segment: typeof row[2] === 'string' ? row[2] : '',
       type: typeof row[3] === 'string' ? row[3] : '',

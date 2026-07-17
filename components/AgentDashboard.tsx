@@ -78,19 +78,14 @@ export default function AgentDashboard({ initialTasks = [], currentUser = "Guest
     });
   };
 
-  // ... (Keep the rest of your AgentDashboard component exactly the same from here down)
-  // ... (filteredTasks and return statement)
-
- // 1. Filter Engine: Separate user's own tasks from completely unassigned pool tasks
+// 1. Filter Engine: Separate user's own tasks from completely unassigned pool tasks
   const filteredTasks = useMemo(() => {
-    const userLower = currentUser.toLowerCase().trim();
-
     if (agentTab === 'pool') {
-      // The open pool shows completely unassigned tasks OR tasks this specific user is currently requesting
+      // The open pool shows completely unassigned tasks OR tasks this user requested
       return tasks.filter(task => {
         const agentField = (task.agent || '').toLowerCase().trim();
         const isUnassigned = agentField === "" || agentField === "unassigned";
-        const isMyRequest = agentField.includes('requested:') && agentField.includes(userLower);
+        const isMyRequest = agentField.includes('requested:'); 
         
         return isUnassigned || isMyRequest;
       });
@@ -100,10 +95,12 @@ export default function AgentDashboard({ initialTasks = [], currentUser = "Guest
     const selectedTime = new Date(selectedDate).setHours(0,0,0,0);
     return tasks.filter(task => {
       const agentField = (task.agent || '').toLowerCase().trim();
+      const isUnassigned = agentField === "" || agentField === "unassigned";
+      const isMyRequest = agentField.includes('requested:');
       
-      // STRICT CHECK: Must belong to this user, and cannot be a pending request or unassigned
-      const isMyActiveTask = agentField.includes(userLower) && !agentField.includes('requested:');
-      if (!isMyActiveTask) return false;
+      // Since page.tsx already filtered out other people's tasks, 
+      // if it's not unassigned and not a request, it IS your active task!
+      if (isUnassigned || isMyRequest) return false;
 
       // Date verification
       if (!task.dueDate) return false;
@@ -114,7 +111,7 @@ export default function AgentDashboard({ initialTasks = [], currentUser = "Guest
       
       return isDateMatch || isCarryOver;
     });
-  }, [tasks, selectedDate, agentTab, currentUser]);
+  }, [tasks, selectedDate, agentTab]);
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">

@@ -5,7 +5,7 @@ interface TaskRow {
   dateRequested: string;
   segment: string;
   type: string;
-  task: string; // Col E
+  task: string;
   brand: string;
   agent: string;
   dueDate: string;
@@ -40,11 +40,11 @@ export async function getTasks(): Promise<TaskRow[]> {
 
     const rows = response.data.values || [];
     return rows.map((row, index) => ({
-      rowIndex: index,
+      rowIndex: index + 2, // 🔴 CRITICAL FIX: Ensures updates target the correct row number (A2 = index 0 + 2 = Row 2)
       dateRequested: typeof row[0] === 'string' ? row[0] : '',
       segment: typeof row[2] === 'string' ? row[2] : '',
       type: typeof row[3] === 'string' ? row[3] : '',
-      task: typeof row[4] === 'string' ? row[4] : '', // Col E mapped
+      task: typeof row[4] === 'string' ? row[4] : '', 
       brand: typeof row[5] === 'string' ? row[5] : '',
       agent: typeof row[7] === 'string' ? row[7] : '',
       dueDate: typeof row[8] === 'string' ? row[8] : '',
@@ -66,7 +66,7 @@ export async function updateTaskStatus(rowIndex: number, newStatus: string) {
     const sheets = google.sheets({ version: 'v4', auth });
     await sheets.spreadsheets.values.update({
       spreadsheetId: process.env.GOOGLE_SHEET_ID,
-      range: `Sheet1!M${rowIndex}`, // Col M
+      range: `Sheet1!M${rowIndex}`,
       valueInputOption: 'USER_ENTERED',
       requestBody: { values: [[newStatus]] },
     });
@@ -77,7 +77,6 @@ export async function updateTaskStatus(rowIndex: number, newStatus: string) {
   }
 }
 
-// NEW/UPDATED ACTION: Handles cross-column assignment for requests & approvals
 export async function assignTaskAgent(rowIndex: number, agent: string, status: string) {
   try {
     const auth = await getAuth();
@@ -129,8 +128,9 @@ export async function addTask(taskData: {
 
     await sheets.spreadsheets.values.append({
       spreadsheetId: process.env.GOOGLE_SHEET_ID,
-      range: 'Sheet1!A:M',
+      range: 'Sheet1!A1', // 🔴 CRITICAL FIX: Anchors the append explicitly to Column A
       valueInputOption: 'USER_ENTERED',
+      insertDataOption: 'INSERT_ROWS', // Guarantees it pushes a clean new row
       requestBody: {
         values: [[
           taskData.dateRequested, "", taskData.segment, taskData.type, taskData.task, 

@@ -6,7 +6,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 const ADMIN_EMAILS = [
   "jeraldagbonsarte25@gmail.com",
-  "jhaye@outdoorequipped.com"
+  "jerald@outdoorequipped.com"
 ];
 
 export default async function Home() {

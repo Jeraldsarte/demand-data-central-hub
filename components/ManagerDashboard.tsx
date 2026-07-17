@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useTransition, useMemo } from 'react';
+// 1. Add useEffect to your React imports
+import { useState, useTransition, useMemo, useEffect } from 'react';
 import { useTheme } from 'next-themes';
 import { Moon, Sun, Plus, Calendar, X, Loader2, ListTodo, ChevronLeft, ChevronRight, Search, Check, AlertCircle } from 'lucide-react';
-import { updateTaskStatus, addTask, assignTaskAgent } from '@/app/actions';
+// 2. Import getTasks from your actions
+import { updateTaskStatus, addTask, assignTaskAgent, getTasks } from '@/app/actions';
 
 interface Task {
   rowIndex: number;
@@ -43,8 +45,28 @@ export default function ManagerDashboard({ initialTasks = [] }: { initialTasks?:
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  
   const [formData, setFormData] = useState({ task: '', segment: '', type: '', brand: '', agent: '', dueDate: '', auditor: '' });
+
+  // 3. ADD THIS: Keep local state synced if initialTasks change
+  useEffect(() => {
+    setTasks(initialTasks);
+  }, [initialTasks]);
+
+  // 4. ADD THIS: The Silent Polling Engine (Fires every 15 seconds)
+  useEffect(() => {
+    const pollInterval = setInterval(async () => {
+      try {
+        const freshTasks = await getTasks();
+        if (freshTasks && freshTasks.length > 0) {
+          setTasks(freshTasks);
+        }
+      } catch (error) {
+        console.error("Background sync failed:", error);
+      }
+    }, 15000); // 15000ms = 15 seconds
+
+    return () => clearInterval(pollInterval);
+  }, []);
 
   const handleStatusChange = (rowIndex: number, newStatus: string) => {
     setTasks(prev => prev.map(t => t.rowIndex === rowIndex ? { ...t, status: newStatus } : t));
@@ -52,21 +74,27 @@ export default function ManagerDashboard({ initialTasks = [] }: { initialTasks?:
   };
 
   const handleApproveRequest = (rowIndex: number, rawAgentString: string) => {
-    // Strips out "Requested: " prefix to isolate actual name
     const cleanAgent = rawAgentString.replace('Requested: ', '').trim();
     setTasks(prev => prev.map(t => t.rowIndex === rowIndex ? { ...t, agent: cleanAgent, status: 'Assigned' } : t));
-    startTransition(async () => {
-      await assignTaskAgent(rowIndex, cleanAgent, 'Assigned');
-    });
+    startTransition(async () => { await assignTaskAgent(rowIndex, cleanAgent, 'Assigned'); });
   };
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     startTransition(async () => {
       const res = await addTask({ dateRequested: new Date().toLocaleDateString(), ...formData });
-      if (res.success) window.location.reload();
+      if (res.success) {
+        // Now it just seamlessly grabs the fresh data without reloading the whole page!
+        const freshTasks = await getTasks();
+        setTasks(freshTasks);
+        setIsModalOpen(false);
+        setFormData({ task: '', segment: '', type: '', brand: '', agent: '', dueDate: '', auditor: '' });
+      }
     });
   };
+
+  // ... (Keep the rest of your ManagerDashboard component exactly the same from here down)
+  // ... (pendingRequests, counts, filteredTasks, groupedAgents, and the return statement)
 
   // Extract task items explicitly flagged as active worker requests
   const pendingRequests = useMemo(() => tasks.filter(t => t.status === 'Requested'), [tasks]);

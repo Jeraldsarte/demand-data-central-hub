@@ -39,18 +39,24 @@ export async function getTasks(): Promise<TaskRow[]> {
     });
 
     const rows = response.data.values || [];
-    return rows.map((row, index) => ({
-      rowIndex: index + 2, // 🔴 CRITICAL FIX: Ensures updates target the correct row number (A2 = index 0 + 2 = Row 2)
-      dateRequested: typeof row[0] === 'string' ? row[0] : '',
-      segment: typeof row[2] === 'string' ? row[2] : '',
-      type: typeof row[3] === 'string' ? row[3] : '',
-      task: typeof row[4] === 'string' ? row[4] : '', 
-      brand: typeof row[5] === 'string' ? row[5] : '',
-      agent: typeof row[7] === 'string' ? row[7] : '',
-      dueDate: typeof row[8] === 'string' ? row[8] : '',
-      auditor: typeof row[11] === 'string' ? row[11] : '',
-      status: typeof row[12] === 'string' ? row[12] : 'Assigned',
+    
+    // 🔴 BULLETPROOF CLEANER: Force every single value to be a primitive string or number
+    const cleanData = rows.map((row, index) => ({
+      rowIndex: Number(index + 2), 
+      dateRequested: row[0] ? String(row[0]) : '',
+      segment: row[2] ? String(row[2]) : '',
+      type: row[3] ? String(row[3]) : '',
+      task: row[4] ? String(row[4]) : '', 
+      brand: row[5] ? String(row[5]) : '',
+      agent: row[7] ? String(row[7]) : '',
+      dueDate: row[8] ? String(row[8]) : '',
+      auditor: row[11] ? String(row[11]) : '',
+      status: row[12] ? String(row[12]) : 'Assigned',
     }));
+
+    // 🔴 Strip any lingering Google memory streams before it crosses the server boundary
+    return JSON.parse(JSON.stringify(cleanData));
+
   } catch (error) {
     console.error('Error fetching tasks:', error);
     return [];

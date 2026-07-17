@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useTransition, useMemo } from 'react';
+// 1. Add useEffect
+import { useState, useTransition, useMemo, useEffect } from 'react';
 import { useTheme } from 'next-themes';
 import { Moon, Sun, Calendar, Hand, Info } from 'lucide-react';
-import { updateTaskStatus, assignTaskAgent } from '@/app/actions';
+// 2. Import getTasks
+import { updateTaskStatus, assignTaskAgent, getTasks } from '@/app/actions';
 
 interface Task {
   rowIndex: number;
@@ -19,6 +21,7 @@ interface Task {
 const STATUS_OPTIONS = ['Assigned', 'On-going', 'For Audit', 'Completed', 'Hold', 'Cancelled'];
 
 const getStatusClasses = (status: string) => {
+  // ... (Keep your existing switch statement)
   switch (status) {
     case 'Completed': return 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800';
     case 'On-going': return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800';
@@ -37,6 +40,27 @@ export default function AgentDashboard({ initialTasks = [], currentUser = "Guest
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [agentTab, setAgentTab] = useState<'mine' | 'pool'>('mine');
 
+  // 3. ADD THIS: Keep local state synced
+  useEffect(() => {
+    setTasks(initialTasks);
+  }, [initialTasks]);
+
+  // 4. ADD THIS: Silent Polling Engine for Agents (Fires every 15 seconds)
+  useEffect(() => {
+    const pollInterval = setInterval(async () => {
+      try {
+        const freshTasks = await getTasks();
+        if (freshTasks && freshTasks.length > 0) {
+          setTasks(freshTasks);
+        }
+      } catch (error) {
+        console.error("Background sync failed:", error);
+      }
+    }, 15000);
+
+    return () => clearInterval(pollInterval);
+  }, []);
+
   const handleStatusChange = (rowIndex: number, newStatus: string) => {
     setTasks(prev => prev.map(t => t.rowIndex === rowIndex ? { ...t, status: newStatus } : t));
     startTransition(async () => { await updateTaskStatus(rowIndex, newStatus); });
@@ -44,7 +68,6 @@ export default function AgentDashboard({ initialTasks = [], currentUser = "Guest
 
   const handleClaimRequest = (rowIndex: number) => {
     const requestString = `Requested: ${currentUser}`;
-    // Visually shifts component into a loading/requested configuration immediately
     setTasks(prev => prev.map(t => t.rowIndex === rowIndex ? { ...t, agent: requestString, status: 'Requested' } : t));
     
     startTransition(async () => {
@@ -54,6 +77,9 @@ export default function AgentDashboard({ initialTasks = [], currentUser = "Guest
       }
     });
   };
+
+  // ... (Keep the rest of your AgentDashboard component exactly the same from here down)
+  // ... (filteredTasks and return statement)
 
   // 1. Filter Engine: Separate user's own tasks from completely unassigned pool tasks
   const filteredTasks = useMemo(() => {

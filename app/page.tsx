@@ -6,6 +6,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "./api/auth/[...nextauth]/route";
 import Link from "next/link";
 
+// ADD THIS EXACT LINE:
+export const dynamic = 'force-dynamic';
+
 // 1. HARDCODED ROLES CONFIGURATION
 const ADMIN_EMAILS = [
   "jeraldagbonsarte25@gmail.com",
@@ -59,7 +62,7 @@ export default async function Home({ searchParams }: PageProps) {
     targetView = "agent";
   }
 
-  // 4. DATA FETCHING & FILTERING
+// 4. DATA FETCHING & FILTERING
   const rawTasks = await getTasks();
   const safeTasks = JSON.parse(JSON.stringify(rawTasks || []));
 
@@ -70,10 +73,12 @@ export default async function Home({ searchParams }: PageProps) {
     ? safeTasks 
     : safeTasks.filter((t: any) => {
         const taskAgent = String(t.agent || "").toLowerCase().trim();
-        return (
-          taskAgent === userName.toLowerCase().trim() || 
-          taskAgent === userEmailPrefix
-        );
+        
+        const isMyTask = taskAgent === userName.toLowerCase().trim() || taskAgent === userEmailPrefix;
+        const isUnassigned = taskAgent === "" || taskAgent === "unassigned";
+        
+        // Pass the task to the Agent Dashboard if it belongs to them OR if it's in the open pool
+        return isMyTask || isUnassigned;
       });
 
   return (

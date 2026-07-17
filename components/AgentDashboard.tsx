@@ -81,19 +81,31 @@ export default function AgentDashboard({ initialTasks = [], currentUser = "Guest
   // ... (Keep the rest of your AgentDashboard component exactly the same from here down)
   // ... (filteredTasks and return statement)
 
-  // 1. Filter Engine: Separate user's own tasks from completely unassigned pool tasks
+ // 1. Filter Engine: Separate user's own tasks from completely unassigned pool tasks
   const filteredTasks = useMemo(() => {
+    const userLower = currentUser.toLowerCase().trim();
+
     if (agentTab === 'pool') {
-      // The open pool shows any rows where agent field is empty, blank or explicitly "Unassigned"
+      // The open pool shows completely unassigned tasks OR tasks this specific user is currently requesting
       return tasks.filter(task => {
         const agentField = (task.agent || '').toLowerCase().trim();
-        return agentField === "" || agentField === "unassigned";
+        const isUnassigned = agentField === "" || agentField === "unassigned";
+        const isMyRequest = agentField.includes('requested:') && agentField.includes(userLower);
+        
+        return isUnassigned || isMyRequest;
       });
     }
 
     // Tab == 'mine' (Personal Task queue mapped against dates)
     const selectedTime = new Date(selectedDate).setHours(0,0,0,0);
     return tasks.filter(task => {
+      const agentField = (task.agent || '').toLowerCase().trim();
+      
+      // STRICT CHECK: Must belong to this user, and cannot be a pending request or unassigned
+      const isMyActiveTask = agentField.includes(userLower) && !agentField.includes('requested:');
+      if (!isMyActiveTask) return false;
+
+      // Date verification
       if (!task.dueDate) return false;
       const taskTime = new Date(task.dueDate).setHours(0,0,0,0);
       
@@ -102,7 +114,7 @@ export default function AgentDashboard({ initialTasks = [], currentUser = "Guest
       
       return isDateMatch || isCarryOver;
     });
-  }, [tasks, selectedDate, agentTab]);
+  }, [tasks, selectedDate, agentTab, currentUser]);
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">

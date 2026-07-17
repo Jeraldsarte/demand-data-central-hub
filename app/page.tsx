@@ -73,11 +73,13 @@ export default async function Home({ searchParams }: PageProps) {
     ? safeTasks 
     : safeTasks.filter((t: any) => {
         const taskAgent = String(t.agent || "").toLowerCase().trim();
+        const userNameLower = userName.toLowerCase().trim();
         
-        const isMyTask = taskAgent === userName.toLowerCase().trim() || taskAgent === userEmailPrefix;
+        // Use .includes() so it catches "Requested: Name" and trailing spaces safely
+        const isMyTask = taskAgent.includes(userNameLower) || taskAgent.includes(userEmailPrefix);
         const isUnassigned = taskAgent === "" || taskAgent === "unassigned";
         
-        // Pass the task to the Agent Dashboard if it belongs to them OR if it's in the open pool
+        // Pass the task to the Agent Dashboard if it belongs to them, they requested it, or if it's in the open pool
         return isMyTask || isUnassigned;
       });
 
